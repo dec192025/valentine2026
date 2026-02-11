@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hold to Unlock 💖</title>
+  <style>
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #ffd1dc, #fff);
+      padding: 20px;
+    }
+    .card{
+      width:min(560px, 100%);
+      background: rgba(255,255,255,.9);
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.12);
+      padding: 18px;
+      text-align:center;
+      overflow:hidden;
+    }
+    h1{ margin: 6px 0 6px; }
+    .hint{ margin: 0 0 14px; opacity:.8; }
+
+    .heartWrap{
+      position: relative;
+      width: 180px; height: 180px;
+      margin: 8px auto 10px;
+      display:flex; align-items:center; justify-content:center;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action: none;
+    }
+    .heart{
+      font-size: 110px;
+      line-height: 1;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
+      transform: scale(1);
+      transition: transform .08s ease;
+    }
+    .heartWrap.holding .heart{ transform: scale(1.06); }
+
+    svg{ position:absolute; inset:0; transform: rotate(-90deg); }
+    .ringBg{ opacity:.18; }
+    .pct{
+      font-size: 26px;
+      font-weight: 800;
+      position:absolute;
+      bottom: 10px;
+      width:100%;
+      text-align:center;
+      text-shadow: 0 2px 10px rgba(0,0,0,.12);
+    }
+
+    #reveal{ margin-top: 14px; display:none; animation: fadeIn .5s ease; }
+    #typing{
+      margin-top: 10px;
+      font-size: 18px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      min-height: 90px;
+    }
+    img{
+      width:100%;
+      border-radius: 14px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.14);
+    }
+    button{
+      margin-top: 14px;
+      border:0; border-radius: 999px;
+      padding: 10px 14px;
+      cursor:pointer;
+      box-shadow: 0 10px 22px rgba(0,0,0,.12);
+    }
+    @keyframes fadeIn{ from{opacity:0; transform: translateY(8px);} to{opacity:1; transform: translateY(0);} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>กดค้างเพื่อเปิดเซอร์ไพรส์ 💌</h1>
+    <p class="hint">กดที่หัวใจค้างไว้ให้ % เต็ม 100%</p>
+
+    <div class="heartWrap" id="holdArea">
+      <svg viewBox="0 0 120 120">
+        <circle class="ringBg" cx="60" cy="60" r="48" fill="none" stroke="black" stroke-width="10"/>
+        <circle id="ring" cx="60" cy="60" r="48" fill="none" stroke="black" stroke-width="10"
+                stroke-linecap="round"/>
+      </svg>
+      <div class="heart">💖</div>
+      <div class="pct" id="pct">0%</div>
+    </div>
+
+    <div id="reveal">
+      <img src="reveal.jpg" alt="surprise" />
+      <div id="typing"></div>
+      <button onclick="resetAll()">เริ่มใหม่</button>
+    </div>
+  </div>
+
+<script>
+  // ปรับได้
+  const HOLD_MS = 1700; // กดค้างกี่ ms ถึง 100%
+  const message =
+`ถึงเธอ...
+เราดีใจมากที่ได้เจอเธอ
+ขอบคุณที่ทำให้ทุกวันของเรามีความหมาย
+สุขสันต์วันวาเลนไทน์นะ ❤️`;
+
+  // Typing
+  let typingTimer = null;
+  function startTyping(){
+    const el = document.getElementById("typing");
+    el.textContent = "";
+    let i = 0;
+    clearTimeout(typingTimer);
+    (function type(){
+      if(i <= message.length){
+        el.textContent = message.slice(0,i);
+        i++;
+        typingTimer = setTimeout(type, 35);
+      }
+    })();
+  }
+
+  // Hold progress
+  const holdArea = document.getElementById('holdArea');
+  const pctEl = document.getElementById('pct');
+  const revealEl = document.getElementById('reveal');
+  const ring = document.getElementById('ring');
+
+  const CIRC = 2 * Math.PI * 48;
+  ring.setAttribute('stroke-dasharray', CIRC);
+  ring.setAttribute('stroke-dashoffset', CIRC);
+
+  let holding = false, startT = 0, raf = null, unlocked = false;
+
+  function setProgress(p){
+    p = Math.max(0, Math.min(1, p));
+    ring.style.strokeDashoffset = (CIRC * (1 - p)).toFixed(2);
+    pctEl.textContent = Math.round(p*100) + "%";
+  }
+
+  function tick(now){
+    if(!holding) return;
+    const p = (now - startT) / HOLD_MS;
+    setProgress(p);
+    if(p >= 1 && !unlocked){
+      unlocked = true;
+      holding = false;
+      holdArea.classList.remove('holding');
+      revealEl.style.display = "block";
+      startTyping();
+      confetti();
+      return;
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function holdStart(e){
+    if(unlocked) return;
+    holding = true;
+    holdArea.classList.add('holding');
+    startT = performance.now();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
+    e.preventDefault();
+  }
+
+  function holdEnd(){
+    if(unlocked) return;
+    holding = false;
+    holdArea.classList.remove('holding');
+    cancelAnimationFrame(raf);
+
+    const current = parseInt(pctEl.textContent,10)/100 || 0;
+    const start = performance.now(), DUR = 250;
+    function back(t){
+      const k = Math.min(1, (t-start)/DUR);
+      setProgress(current*(1-k));
+      if(k < 1) requestAnimationFrame(back);
+    }
+    requestAnimationFrame(back);
+  }
+
+  holdArea.addEventListener('mousedown', holdStart);
+  window.addEventListener('mouseup', holdEnd);
+  holdArea.addEventListener('touchstart', holdStart, {passive:false});
+  window.addEventListener('touchend', holdEnd);
+
+  setProgress(0);
+
+  function resetAll(){
+    unlocked = false;
+    revealEl.style.display = "none";
+    clearTimeout(typingTimer);
+    document.getElementById("typing").textContent = "";
+    setProgress(0);
+  }
+
+  function confetti(){
+    for(let i=0;i<70;i++){
+      const s=document.createElement('span');
+      s.textContent = ["💗","💖","💕","❤️","✨"][Math.floor(Math.random()*5)];
+      s.style.position='fixed';
+      s.style.left = (Math.random()*100)+'vw';
+      s.style.top = '-10px';
+      s.style.fontSize = (12+Math.random()*22)+'px';
+      s.style.transition='transform 2.2s linear, opacity 2.2s';
+      document.body.appendChild(s);
+      requestAnimationFrame(()=>{
+        s.style.transform = `translateY(${110+Math.random()*20}vh) rotate(${Math.random()*360}deg)`;
+        s.style.opacity='0';
+      });
+      setTimeout(()=>s.remove(),2300);
+    }
+  }
+</script>
+</body>
+</html>
